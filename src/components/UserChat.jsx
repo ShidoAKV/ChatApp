@@ -83,12 +83,15 @@ const styles = StyleSheet.create({
     borderLeftWidth: 0,
     borderRightWidth: 0,
     padding: 10,
+    backgroundColor:"#242323ff"
   },
   userImage: {
     width: 50,
     height: 50,
     borderRadius: 25,
     resizeMode: "cover",
+    borderWidth:1,
+    borderColor:'#969191ff'
   },
   content: {
     flex: 1,
@@ -96,15 +99,15 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 15,
     fontWeight: "500",
+    color: "#fdfdfdff",
   },
   lastMessage: {
-    marginTop: 3,
-    color: "gray",
+    color: "#a29d9dff",
     fontWeight: "500",
   },
   time: {
     fontSize: 11,
     fontWeight: "400",
-    color: "#585858",
+    color: "#fdfdfdff",
   },
 });

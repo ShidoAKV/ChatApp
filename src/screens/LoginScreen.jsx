@@ -29,10 +29,10 @@ const LoginScreen = () => {
         const {data}=await axios.post("http://10.0.2.2:8000/api/login",{email,password});
         if(data.success){
           const token=data.token;
-          AsyncStorage.setItem('authToken',token);
+          await AsyncStorage.setItem('authToken',token);
           setEmail('');
           setPassword('');
-          navigation.navigate('Home');
+          navigation.replace('Home');
         }else{
           Alert.alert(data.message);
         }

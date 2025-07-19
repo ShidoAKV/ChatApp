@@ -1,4 +1,4 @@
-import { Text, View ,StyleSheet} from "react-native";
+import { Text, View, StyleSheet, ScrollView } from "react-native";
 import React, { useEffect, useContext, useState } from "react";
 import axios from "axios";
 import { UserType } from "../context/UserContext.js";
@@ -8,21 +8,20 @@ const FriendScreen = () => {
   const { userId } = useContext(UserType);
   const [friendRequests, setFriendRequests] = useState([]);
 
-
- const fetchFriendRequests = async () => {
+  const fetchFriendRequests = async () => {
     try {
-      const {data} = await axios.get(
+      const { data } = await axios.get(
         `http://10.0.2.2:8000/api/friend-request/${userId}`
       );
       if (data.success) {
-         
-        const friendRequestsData =data?.user?.friendRequests?.map((friendRequest) => ({
-          _id: friendRequest._id,
-          name: friendRequest.name,
-          email: friendRequest.email,
-          image: friendRequest.image,
-        }));
-     
+        const friendRequestsData = data?.user?.friendRequests?.map(
+          (friendRequest) => ({
+            _id: friendRequest._id,
+            name: friendRequest.name,
+            email: friendRequest.email,
+            image: friendRequest.image,
+          })
+        );
         setFriendRequests(friendRequestsData);
       }
     } catch (err) {
@@ -31,20 +30,21 @@ const FriendScreen = () => {
   };
 
   useEffect(() => {
-   if(userId){ 
-    fetchFriendRequests();
-  }
-  },[]);
-
-  
-  
-
+    if (userId) {
+      fetchFriendRequests();
+    }
+  }, []);
 
   return (
-    <View style={styles.contianer}>
-      {friendRequests&& <Text>Your Friend Requests!</Text>}
+    <ScrollView style={styles.container}>
+      {friendRequests.length > 0 && (
+        <Text style={styles.heading}>Your Friend Requests</Text>
+      )}
+       {friendRequests.length===0 && (
+        <Text style={styles.heading}>No Friend Requests!</Text>
+      )}
 
-      {friendRequests?.map((item, index) => (
+      {friendRequests.map((item, index) => (
         <FriendRequest
           key={index}
           item={item}
@@ -52,17 +52,23 @@ const FriendScreen = () => {
           setFriendRequests={setFriendRequests}
         />
       ))}
-    </View>
+    </ScrollView>
   );
 };
 
 export default FriendScreen;
 
-const styles=StyleSheet.create(
-{
-  contianer:{
-  padding: 10, 
-  marginHorizontal: 12 
-}
-}
-)
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#090808ff',
+    paddingHorizontal: 16,
+    paddingTop: 24,
+  },
+  heading: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 16,
+  },
+});

@@ -1,4 +1,4 @@
-import {ScrollView, Pressable} from "react-native";
+import {ScrollView, Pressable,StyleSheet} from "react-native";
 import React, { useContext,useEffect,useState } from "react";
 import { UserType } from "../context/UserContext.js";
 import UserChat from "../components/UserChat.jsx";
@@ -24,10 +24,8 @@ const ChatsScreen = () => {
     acceptedFriendsList();
   },[]);
   
- 
- 
   return (
-    <ScrollView showsVerticalScrollIndicator={false}>
+    <ScrollView showsVerticalScrollIndicator={false} style={styles.container}>
       <Pressable>
           {acceptedFriends?.map((item,index) => (
               <UserChat key={index} item={item}/>
@@ -36,5 +34,11 @@ const ChatsScreen = () => {
     </ScrollView>
   );
 };
+
+const styles=StyleSheet.create({
+  container:{
+    backgroundColor:'black'
+  } 
+})
 
 export default ChatsScreen;

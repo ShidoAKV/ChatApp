@@ -18,7 +18,7 @@ const FriendRequest = ({ item, friendRequests, setFriendRequests }) => {
         }
       );
       if (data.success) {
-        setFriendRequests(
+         setFriendRequests(
           friendRequests?.filter((request) => request._id !== friendRequestId)
         );
         navigation.navigate("Chats");

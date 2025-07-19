@@ -9,33 +9,35 @@ const User = ({ item }) => {
   const [friendRequests, setFriendRequests] = useState([]);
   const [userFriends, setUserFriends] = useState([]);
 
+
+
   useEffect(() => {
     const fetchFriendRequests = async () => {
       try {
         const { data } = await axios.get(`http://10.0.2.2:8000/api/friend-requests/sent/${userId}`);
         if (data.success) setFriendRequests(data.data);
-        else console.log("error", data.message);
+        else console.log("Error", data.message);
       } catch (error) {
-        console.log("error", error);
+        console.log("Error fetching friend requests:", error);
       }
     };
 
     fetchFriendRequests();
-  },[]);
+  }, [userId]);
 
   useEffect(() => {
     const fetchUserFriends = async () => {
       try {
         const { data } = await axios.get(`http://10.0.2.2:8000/api/friends/${userId}`);
         if (data.success) setUserFriends(data.data);
-        else console.log("error retrieving user friends", data.message);
+        else console.log("Error retrieving user friends:", data.message);
       } catch (error) {
-        console.log("Error message", error);
+        console.log("Error fetching friends:", error);
       }
     };
 
     fetchUserFriends();
-  },[]);
+  }, [userId]);
 
   const sendFriendRequest = async (currentUserId, selectedUserId) => {
     try {
@@ -43,14 +45,17 @@ const User = ({ item }) => {
         currentUserId,
         selectedUserId,
       });
-      if (data.success) setRequestSent(true);
+      if (data.success) {
+        setRequestSent(true);
+        socket.emit("friendRequestSent", { from: currentUserId, to: selectedUserId }); // Optional: socket emit
+      }
     } catch (error) {
-      console.log("error message", error);
+      console.log("Error sending friend request:", error);
     }
   };
 
   const isFriend = userFriends.includes(item._id);
-  const isRequestSent = requestSent || friendRequests?.some((friend) => friend._id === item._id);
+  const isRequestSent = requestSent || friendRequests.some((friend) => friend._id === item._id);
 
   return (
     <Pressable style={styles.userContainer}>
@@ -58,7 +63,6 @@ const User = ({ item }) => {
         style={styles.userImage}
         source={{ uri: item?.image || "https://via.placeholder.com/50" }}
       />
-
       <View style={styles.userInfo}>
         <Text style={styles.userName}>{item?.name}</Text>
         <Text style={styles.userEmail}>{item?.email}</Text>
@@ -91,12 +95,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginVertical: 10,
+    borderWidth: 1,            
+    borderColor: "#e5eaeeff",
+    borderRadius:10,
+    padding:10
   },
   userImage: {
     width: 50,
     height: 50,
     borderRadius: 25,
     resizeMode: "cover",
+    borderWidth:1,
+    borderColor:'#969191ff'
   },
   userInfo: {
     marginLeft: 12,
@@ -106,8 +116,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   userEmail: {
-    marginTop: 4,
-    color: "gray",
+    color: "#b5b0b0ff",
   },
   button: {
     padding: 10,

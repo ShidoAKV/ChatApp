@@ -1,9 +1,11 @@
 import express from 'express';
 import jwt from "jsonwebtoken";
-import multer from "multer";
 import User from '../model/user.js';
 import Message from '../model/message.js';
+import { io } from '../index.js';
+import { upload } from '../middleware/multer.js';
 // import { Strategy as LocalStrategy } from "passport-local";
+import {v2 as cloudinary} from 'cloudinary';
 
 const router = express.Router();
 
@@ -148,23 +150,13 @@ router.get("/accepted-friends/:userId", async (req, res) => {
   }
 });
 
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "files/");
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, uniqueSuffix + "-" + file.originalname);
-  },
-});
 
 
-const upload = multer({ storage: storage });
 
-
-router.post("/messages", upload.single("imageFile"), async (req, res) => {
+router.post("/messages", upload.single("image"), async (req, res) => {
   try {
     const { senderId, recepientId, messageType, messageText } = req.body;
+    const filepath = req.file?.path;
 
     if (messageType === "image" && !req.file) {
       return res.json({
@@ -173,33 +165,36 @@ router.post("/messages", upload.single("imageFile"), async (req, res) => {
       });
     }
 
-    const imageUrl =
-      messageType === "image" && req.file?.filename
-        ? `files/${req.file.filename}`
-        : null;
-
     const newMessage = new Message({
       senderId,
       recepientId,
       messageType,
       message: messageText || "",
       timestamp: new Date(),
-      imageUrl,
     });
+
+    if (filepath) {
+      const imageUpload = await cloudinary.uploader.upload(filepath, {
+        resource_type: 'image',
+      });
+      const imageURL = imageUpload?.secure_url;
+      newMessage.imageUrl = imageURL;
+    }
 
     await newMessage.save();
 
-    res.json({
+    io.to(recepientId).emit("newMessage", newMessage);
+
+    return res.json({
       success: true,
       message: "Message sent successfully",
       data: newMessage,
     });
   } catch (error) {
     console.error("Error saving message:", error);
-    res.status(500).json({ success: false, error: "Internal Server Error" });
+    return res.status(500).json({ success: false, error: "Internal Server Error" });
   }
 });
-
 
 
 router.get("/user/:userId", async (req, res) => {

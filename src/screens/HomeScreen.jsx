@@ -51,10 +51,16 @@ const HomeScreen = () => {
                         size={24}
                         color="black"
                     />
+                    <MaterialIcons
+                        name="logout"
+                        size={24}
+                        color="black"
+                        onPress={() => navigation.navigate("logout")}
+                    />
                 </View>
             ),
         });
-    },[]);
+    }, []);
 
 
 
@@ -86,7 +92,7 @@ const HomeScreen = () => {
 
     useEffect(() => {
         fetchUsers();
-    },[]);
+    }, []);
 
     const onRefresh = async () => {
         setRefreshing(true);
@@ -126,7 +132,7 @@ export default HomeScreen;
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#f9f9f9",
+        backgroundColor: "#0a0909ff",
     },
     userList: {
         padding: 10,

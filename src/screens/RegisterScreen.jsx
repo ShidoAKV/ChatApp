@@ -26,14 +26,13 @@ const RegisterScreen = () => {
        
       const {data}=await axios.post("http://10.0.2.2:8000/api/register",user);
 
-      
       if(data.success){
         Alert.alert(data.message);
         setEmail('');
         setImage('');
         setPassword('');
         setName('');
-        navigation.navigate('Home');
+        navigation.replace('Home');
       }
       
     } catch (error) {

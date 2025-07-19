@@ -4,10 +4,26 @@ import passport from "passport";
 import cors from "cors";
 import connectDB from "./config/db.js";
 import router from "./routes/userRoute.js";
+import {createServer} from 'http';
+import {Server} from 'socket.io';
+import connectCloudinary from "./config/cloudinary.js";
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const app = express();
+const server=createServer(app);
+
+const io = new Server(server, {
+  cors: {
+    origin: "*", 
+    methods: ["GET", "POST"],
+  },
+});
+
 const port = 8000;
 connectDB();
+connectCloudinary();
 app.use(cors());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
@@ -17,9 +33,25 @@ app.use(passport.initialize());
 app.use('/api',router);
 app.use("/files", express.static("files"));
 
-app.listen(port, () => {
+io.on("connection", (socket) => {
+  console.log(`🟢 User connected: ${socket.id}`);
+  
+  socket.on("join", (userId) => {
+    socket.join(userId);
+
+  });
+
+   // Disconnect
+  socket.on("disconnect", () => {
+    console.log(` User disconnected: ${socket.id}`);
+  });
+});
+
+server.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
+
+export {io};
 
 // app.post("/register", (req, res) => {
 //   const { name, email, password, image } = req.body;

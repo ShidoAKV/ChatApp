@@ -28,6 +28,7 @@ import { launchCamera, launchImageLibrary } from "react-native-image-picker";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { UserType } from "../context/UserContext.js";
 import axios from "axios";
+import socket from "../context/socket.js";
 
 const ChatMessagesScreen = () => {
     const [showEmojiSelector, setShowEmojiSelector] = useState(false);
@@ -37,38 +38,28 @@ const ChatMessagesScreen = () => {
     const [selectedImage, setSelectedImage] = useState("");
     const [recepientData, setRecepientData] = useState(null);
     const scrollViewRef = useRef(null);
-
     const navigation = useNavigation();
     const route = useRoute();
     const { recepientId } = route.params;
     const { userId } = useContext(UserType);
 
-    const handleEmojiPress = () => {
-        setShowEmojiSelector((prev) => !prev);
-    };
-
-    const handleSend = async (messageType, imageData) => {
+    const handleSend = async () => {
         try {
-
-
             const formData = new FormData();
             formData.append("senderId", userId);
             formData.append("recepientId", recepientId);
 
-            if (messageType === "image") {
+            if (selectedImage) {
                 formData.append("messageType", "image");
-                const file = {
-                    uri: imageData.uri,
-                    name: imageData.name || `photo_${Date.now()}.jpg`,
-                    type: imageData.type || "image/jpeg",
-                };
-
-                formData.append("imageFile", file);
+                formData.append("image", {
+                    uri: selectedImage.uri,
+                    name: selectedImage.fileName || selectedImage.name || 'photo.jpg',
+                    type: selectedImage.type || 'image/jpeg',
+                });
             } else {
                 formData.append("messageType", "text");
                 formData.append("messageText", message);
             }
-
 
             const { data } = await axios.post(
                 "http://10.0.2.2:8000/api/messages",
@@ -79,19 +70,18 @@ const ChatMessagesScreen = () => {
                     },
                 }
             );
-
-
             if (data.success) {
                 setMessage("");
                 setSelectedImage("");
                 fetchMessages();
             } else {
-                Alert.alert('Uploading...')
+                Alert.alert("Error", "Message not sent");
             }
         } catch (error) {
             console.log("Error in sending message:", error);
         }
     };
+
 
     const requestCameraPermission = async () => {
         if (Platform.OS === "android") {
@@ -127,7 +117,13 @@ const ChatMessagesScreen = () => {
                 console.log("Camera Error:", response.errorMessage);
             } else if (response.assets?.length > 0) {
                 const uri = response.assets[0].uri;
-                handleSend("image", uri);
+                const imageData = {
+                    uri: uri,
+                    name: uri.split("/").pop(),
+                    type: "image/jpeg"
+                };
+                setSelectedImage(imageData);
+
             }
         });
     };
@@ -156,7 +152,8 @@ const ChatMessagesScreen = () => {
                     type,
                 };
 
-                handleSend("image", imageData);
+                setSelectedImage(imageData);
+
             }
         });
     };
@@ -199,12 +196,39 @@ const ChatMessagesScreen = () => {
 
                 fetchMessages();
             } else {
-                console.log("error deleting messages",data.message);
+                console.log("error deleting messages", data.message);
             }
         } catch (error) {
             console.log("error deleting messages", error);
         }
     };
+
+
+    useEffect(() => {
+        if (!socket.connected) {
+            socket.connect();
+        }
+
+        socket.emit("join", userId);
+
+        const handleNewMessage = (msg) => {
+             
+            setMessages((prevMessages) => [...prevMessages, {
+                _id: msg._id,
+                message: msg.message,
+                timeStamp: msg.timeStamp,
+                senderId: msg.senderId,
+                imageUrl: msg.imageUrl ,
+                messageType: msg.messageType
+            }]);
+        };
+
+        socket.on("newMessage", handleNewMessage);
+
+        return () => {
+            socket.off("newMessage", handleNewMessage);
+        };
+    }, [socket]);
 
     useEffect(() => {
         fetchMessages();
@@ -279,6 +303,7 @@ const ChatMessagesScreen = () => {
         });
     }, [navigation, recepientData, selectedMessages]);
 
+   
     return (
         <KeyboardAvoidingView style={styles.container}>
             <ScrollView
@@ -287,7 +312,8 @@ const ChatMessagesScreen = () => {
                 onContentSizeChange={handleContentSizeChange}
             >
                 {messages?.map((msg) => {
-                    const isSender = msg.senderId === userId;
+                    const isSender = (msg.senderId._id === userId);
+
                     return (
                         <Pressable
                             onLongPress={() => handleSelectMessage(msg)}
@@ -296,6 +322,7 @@ const ChatMessagesScreen = () => {
                                 styles.messageContainer,
                                 isSender ? styles.senderMessage : styles.receiverMessage,
                                 selectedMessages.includes(msg._id) && styles.selectedMessage,
+                                { alignSelf: isSender ? "flex-end" : "flex-start" }
                             ]}
                         >
                             {msg.messageType === "text" && (
@@ -304,7 +331,7 @@ const ChatMessagesScreen = () => {
 
                             {msg.messageType === "image" && (
                                 <Image
-                                    source={{ uri: `http://10.0.2.2:8000/${msg.imageUrl}` }}
+                                    source={{ uri: msg.imageUrl }}
                                     style={styles.messageImage}
                                 />
                             )}
@@ -319,22 +346,49 @@ const ChatMessagesScreen = () => {
                         </Pressable>
                     );
                 })}
+
             </ScrollView>
+            {selectedImage && (
+                <View style={{ padding: 10, alignItems: "center" }}>
+                    <Image
+                        source={{ uri: selectedImage.uri }}
+                        style={{
+                            width: 120,
+                            height: 120,
+                            borderRadius: 10,
+                            marginBottom: 10,
+                            borderWidth: 1,
+                            borderColor: "#ccc",
+                        }}
+                    />
+                    <Pressable
+                        onPress={() => setSelectedImage("")}
+                        style={{
+                            position: "absolute",
+                            top: 5,
+                            right: 20,
+                            backgroundColor: "#fff",
+                            borderRadius: 12,
+                            paddingHorizontal: 6,
+                            paddingVertical: 2,
+                            elevation: 2,
+                        }}
+                    >
+                        <Text style={{ color: "red", fontWeight: "bold" }}>X</Text>
+                    </Pressable>
+                </View>
+            )}
+
+
 
             <View style={styles.inputContainer}>
-                <Entypo
-                    onPress={handleEmojiPress}
-                    style={styles.iconMargin}
-                    name="emoji-happy"
-                    size={24}
-                    color="gray"
-                />
 
                 <TextInput
                     value={message}
                     onChangeText={setMessage}
                     style={styles.textInput}
                     placeholder="Type your message..."
+                    placeholderTextColor={'#ffffff'}
                 />
 
                 <View style={styles.actionIcons}>
@@ -343,7 +397,7 @@ const ChatMessagesScreen = () => {
                     <Feather name="mic" size={24} color="gray" />
                 </View>
 
-                <Pressable onPress={() => handleSend("text")} style={styles.sendButton}>
+                <Pressable onPress={handleSend} style={styles.sendButton}>
                     <Text style={styles.sendButtonText}>Send</Text>
                 </Pressable>
             </View>
@@ -364,7 +418,7 @@ const ChatMessagesScreen = () => {
 export default ChatMessagesScreen;
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: "#F0F0F0" },
+    container: { flex: 1, backgroundColor: "#2c2a2aff" },
     scrollContent: { flexGrow: 1 },
     inputContainer: {
         flexDirection: "row",
@@ -383,6 +437,8 @@ const styles = StyleSheet.create({
         borderColor: "#ddd",
         borderRadius: 20,
         paddingHorizontal: 10,
+        color:'#ffffff',
+        
     },
     actionIcons: {
         flexDirection: "row",
@@ -403,11 +459,46 @@ const styles = StyleSheet.create({
     userInfo: { flexDirection: "row", alignItems: "center" },
     userImage: { width: 30, height: 30, borderRadius: 15, resizeMode: "cover" },
     userName: { marginLeft: 5, fontSize: 15, fontWeight: "bold" },
-    messageContainer: { margin: 10, maxWidth: "70%", padding: 10, borderRadius: 10 },
-    senderMessage: { backgroundColor: "#DCF8C6", alignSelf: "flex-end" },
-    receiverMessage: { backgroundColor: "#FFF", alignSelf: "flex-start" },
-    messageText: { fontSize: 16, marginBottom: 4 },
-    messageImage: { width: 200, height: 200, borderRadius: 10, marginBottom: 5 },
-    messageTime: { fontSize: 10, color: "gray", alignSelf: "flex-end" },
-    selectedMessage: { borderWidth: 1, borderColor: "blue" },
+    messageContainer: {
+        padding: 10,
+        borderRadius: 10,
+        marginVertical: 5,
+        margin:10,
+        maxWidth: "70%",
+        backgroundColor: "#eee",
+    },
+
+    senderMessage: {
+        backgroundColor: "#DCF8C6",
+    },
+
+    receiverMessage: {
+        backgroundColor: "#fff",
+    },
+
+    messageText: {
+        fontSize: 16,
+        color: "#000",
+
+    },
+
+    messageTime: {
+        fontSize: 12,
+        color: "gray",
+        alignSelf: "flex-end",
+    },
+
+    selectedMessage: {
+        borderWidth: 2,
+        borderColor: "dodgerblue",
+    },
+    messageImage: {
+        width: 200,
+        height: 200,
+        borderRadius: 10,
+        resizeMode: 'cover',
+        marginVertical: 5,
+    }
+
+
 });
